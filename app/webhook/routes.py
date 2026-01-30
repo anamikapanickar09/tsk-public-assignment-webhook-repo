@@ -1,7 +1,94 @@
-from flask import Blueprint, json, request
+from flask import Blueprint, json, request, abort
+from app.extensions import mongo
+# import os
+
+# from dotenv import load_dotenv
+# load_dotenv()
 
 webhook = Blueprint('Webhook', __name__, url_prefix='/webhook')
 
-@webhook.route('/receiver', methods=["POST"])
+# import hmac
+# import hashlib
+
+# SECRET = os.getenv("GH-SECRET")
+
+@webhook.route("/receiver", methods=["POST"])
 def receiver():
-    return {}, 200
+    # # TODO: Verify signature
+    # signature = request.headers.get("X-Hub-Signature-256")
+    # if not signature:
+    #     abort(400, "Missing signature")
+
+    # body = request.data
+    # expected = "sha256=" + hmac.new(
+    #     GITHUB_SECRET.encode(),
+    #     body,
+    #     hashlib.sha256
+    # ).hexdigest()
+
+    # if not hmac.compare_digest(expected, signature):
+    #     abort(401, "Invalid signature")
+
+    event = request.headers.get("X-GitHub-Event")
+    print("Event:", event)
+
+    if event == "ping":
+        return {"msg": "pong"}, 200
+
+    payload = request.json
+
+    info = None
+    if event == "push":
+        info = get_push_info(payload)
+    elif event == "pull_request" and payload["action"] == "opened":
+        info = get_pr_info(payload)
+    
+    if info is not None:
+        res = mongo.db.github.insert_one(info)
+        print(res)
+
+    return {"status": "ok"}, 200
+
+def get_pr_info(payload):
+    info = {}
+    info["request_id"] = payload["pull_request"]["number"]
+    info["author"] = payload["pull_request"]["user"]["login"] # TODO: use github api to fetch actual name instead of username url = f"https://api.github.com/users/{username}"
+    info["action"] = "PULL_REQUEST"
+    info["from_branch"] = payload["pull_request"]["head"]["ref"].removeprefix("refs/heads/")
+    info["to_branch"] = payload["pull_request"]["base"]["ref"].removeprefix("refs/heads/")
+    info["timestamp"] = payload["pull_request"]["updated_at"] # TODO: convert to a standard time format
+    return info
+
+def get_push_info(payload):
+    info = {}
+    info["request_id"] = payload["head_commit"]["id"]
+    info["author"] = payload["head_commit"]["author"]["name"]
+    info["action"] = "PUSH"
+    info["from_branch"] = "idk" # TODO: use github compare api which is smth like this: https://github.com/anamikapanickar09/action-repo/compare/10f6e7a4f6c8...0589748a1dd8
+    info["to_branch"] = payload["ref"].removeprefix("refs/heads/")
+    info["timestamp"] = payload["head_commit"]["timestamp"] # TODO: convert to a standard time format
+    return info
+
+
+
+
+# import hmac
+# import hashlib
+# import os
+# from flask import request, abort
+
+
+# def verify_github_signature():
+#     signature = request.headers.get("X-Hub-Signature-256")
+#     if not signature:
+#         abort(400, "Missing signature")
+
+#     body = request.data
+#     expected = "sha256=" + hmac.new(
+#         SECRET.encode(),
+#         body,
+#         hashlib.sha256
+#     ).hexdigest()
+
+#     if not hmac.compare_digest(expected, signature):
+#         abort(401, "Invalid signature")
