@@ -13,6 +13,7 @@ GITHUB_SECRET = os.getenv("GH_SECRET")
 
 @webhook.route("/receiver", methods=["POST"])
 def receiver():
+
     # Verify signature
     signature = request.headers.get("X-Hub-Signature-256")
     if not signature:
@@ -29,13 +30,13 @@ def receiver():
         abort(401, "Invalid signature")
 
     event = request.headers.get("X-GitHub-Event")
-    print("Event:", event)
 
+
+    # Handle events
     if event == "ping":
         return {"msg": "pong"}, 200
 
     payload = request.json
-
     info = None
     if event == "push":
         info = get_push_info(payload)
@@ -44,7 +45,7 @@ def receiver():
     
     if info is not None:
         res = mongo.db.github.insert_one(info)
-        print(res)
+        print("Inserted", event, "event to DB with id", str(res.inserted_id))
 
     return {"status": "ok"}, 200
 
