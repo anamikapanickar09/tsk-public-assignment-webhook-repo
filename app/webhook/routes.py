@@ -1,33 +1,32 @@
 from flask import Blueprint, json, request, abort
 from app.extensions import mongo, parse_time, get_gh_name
-# import os
+import hmac
+import hashlib
+import os
 
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 webhook = Blueprint('Webhook', __name__, url_prefix='/webhook')
 
-# import hmac
-# import hashlib
-
-# SECRET = os.getenv("GH-SECRET")
+GITHUB_SECRET = os.getenv("GH_SECRET")
 
 @webhook.route("/receiver", methods=["POST"])
 def receiver():
-    # # TODO: Verify signature
-    # signature = request.headers.get("X-Hub-Signature-256")
-    # if not signature:
-    #     abort(400, "Missing signature")
+    # Verify signature
+    signature = request.headers.get("X-Hub-Signature-256")
+    if not signature:
+        abort(400, "Missing signature")
 
-    # body = request.data
-    # expected = "sha256=" + hmac.new(
-    #     GITHUB_SECRET.encode(),
-    #     body,
-    #     hashlib.sha256
-    # ).hexdigest()
+    body = request.data
+    expected = "sha256=" + hmac.new(
+        GITHUB_SECRET.encode(),
+        body,
+        hashlib.sha256
+    ).hexdigest()
 
-    # if not hmac.compare_digest(expected, signature):
-    #     abort(401, "Invalid signature")
+    if not hmac.compare_digest(expected, signature):
+        abort(401, "Invalid signature")
 
     event = request.headers.get("X-GitHub-Event")
     print("Event:", event)
@@ -72,27 +71,3 @@ def get_push_info(payload) -> dict:
     info["timestamp"] = payload["head_commit"]["timestamp"]
     info["timestamp"] = parse_time(info["timestamp"])
     return info
-
-
-
-
-# import hmac
-# import hashlib
-# import os
-# from flask import request, abort
-
-
-# def verify_github_signature():
-#     signature = request.headers.get("X-Hub-Signature-256")
-#     if not signature:
-#         abort(400, "Missing signature")
-
-#     body = request.data
-#     expected = "sha256=" + hmac.new(
-#         SECRET.encode(),
-#         body,
-#         hashlib.sha256
-#     ).hexdigest()
-
-#     if not hmac.compare_digest(expected, signature):
-#         abort(401, "Invalid signature")
