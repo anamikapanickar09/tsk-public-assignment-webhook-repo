@@ -1,5 +1,5 @@
 from flask import Blueprint, json, request, abort
-from app.extensions import mongo, parse_time
+from app.extensions import mongo, parse_time, get_gh_name
 # import os
 
 # from dotenv import load_dotenv
@@ -53,7 +53,8 @@ def get_pr_info(payload) -> dict:
     info = {}
     info["request_id"] = payload["pull_request"]["number"]
     info["request_id"] = str(info["request_id"])
-    info["author"] = payload["pull_request"]["user"]["login"] # TODO: use github api to fetch actual name instead of username url = f"https://api.github.com/users/{username}"
+    info["author"] = payload["pull_request"]["user"]["login"]
+    info["author"] = get_gh_name(info["author"])
     info["action"] = "PULL_REQUEST"
     info["from_branch"] = payload["pull_request"]["head"]["ref"].removeprefix("refs/heads/")
     info["to_branch"] = payload["pull_request"]["base"]["ref"].removeprefix("refs/heads/")
