@@ -1,5 +1,5 @@
 from flask import Blueprint, json, request, abort
-from app.extensions import mongo
+from app.extensions import mongo, parse_time
 # import os
 
 # from dotenv import load_dotenv
@@ -49,24 +49,27 @@ def receiver():
 
     return {"status": "ok"}, 200
 
-def get_pr_info(payload):
+def get_pr_info(payload) -> dict:
     info = {}
     info["request_id"] = payload["pull_request"]["number"]
+    info["request_id"] = str(info["request_id"])
     info["author"] = payload["pull_request"]["user"]["login"] # TODO: use github api to fetch actual name instead of username url = f"https://api.github.com/users/{username}"
     info["action"] = "PULL_REQUEST"
     info["from_branch"] = payload["pull_request"]["head"]["ref"].removeprefix("refs/heads/")
     info["to_branch"] = payload["pull_request"]["base"]["ref"].removeprefix("refs/heads/")
-    info["timestamp"] = payload["pull_request"]["updated_at"] # TODO: convert to a standard time format
+    info["timestamp"] = payload["pull_request"]["updated_at"]
+    info["timestamp"] = parse_time(info["timestamp"])
     return info
 
-def get_push_info(payload):
+def get_push_info(payload) -> dict:
     info = {}
     info["request_id"] = payload["head_commit"]["id"]
     info["author"] = payload["head_commit"]["author"]["name"]
     info["action"] = "PUSH"
     info["from_branch"] = "idk" # TODO: use github compare api which is smth like this: https://github.com/anamikapanickar09/action-repo/compare/10f6e7a4f6c8...0589748a1dd8
     info["to_branch"] = payload["ref"].removeprefix("refs/heads/")
-    info["timestamp"] = payload["head_commit"]["timestamp"] # TODO: convert to a standard time format
+    info["timestamp"] = payload["head_commit"]["timestamp"]
+    info["timestamp"] = parse_time(info["timestamp"])
     return info
 
 
